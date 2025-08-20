@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.punit.weightdriver">
+
+    <!-- USB host capability -->
+    <uses-feature android:name="android.hardware.usb.host" android:required="false" />
+
+    <!-- Foreground service general + connected device type (Android 14+) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+
+    <!-- Notifications are required for foreground service on Android 13+ -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Auto start on boot (for POS devices / kiosks) -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <application
+        android:allowBackup="true"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:theme="@style/Theme.WeightBridgeDriver">
+
+        <activity
+            android:name=".ui.MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Foreground USB reader service -->
+        <service
+            android:name=".core.UsbReaderService"
+            android:exported="false"
+            android:foregroundServiceType="connectedDevice" />
+
+        <!-- Accessibility for auto-insert -->
+        <service
+            android:name=".inject.MyAccessibilityService"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
+        </service>
+
+        <!-- Start when USB device is attached (even on POS) -->
+        <receiver
+            android:name=".receivers.UsbAttachReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
+            </intent-filter>
+            <!-- Broad filters: CDC-ACM class (0x02) and vendor-specific (0xff) -->
+            <meta-data
+                android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
+                android:resource="@xml/device_filter" />
+        </receiver>
+
+        <!-- Receives weight broadcasts (DB insert + clipboard copy). Exported=true to allow adb testing. -->
+        <receiver
+            android:name=".core.WeightReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.punit.weightdriver.WEIGHT" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Restart after reboot -->
+        <receiver
+            android:name=".receivers.BootReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+    </application>
+</manifest>

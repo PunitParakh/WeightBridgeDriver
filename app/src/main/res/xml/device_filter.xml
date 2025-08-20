@@ -1,0 +1,6 @@
+<resources>
+    <!-- CDC-ACM (class 0x02) -->
+    <usb-device class="2" />
+    <!-- Vendor-specific (0xff) -->
+    <usb-device class="255" />
+</resources>
