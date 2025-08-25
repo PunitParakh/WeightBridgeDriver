@@ -6,12 +6,16 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [WeightEntity::class],
-    version = 1,
+    entities = [
+        WeightEntity::class,
+        DeviceProfile::class
+    ],
+    version = 2, // bump from previous version
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun weightDao(): WeightDao
+    abstract fun deviceDao(): DeviceDao
 
     companion object {
         @Volatile private var INSTANCE: AppDatabase? = null
@@ -21,8 +25,10 @@ abstract class AppDatabase : RoomDatabase() {
                 Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
-                    "weights.db"
-                ).build().also { INSTANCE = it }
+                    "weight_driver.db"
+                )
+                    .fallbackToDestructiveMigration() // dev-friendly while iterating
+                    .build().also { INSTANCE = it }
             }
         }
     }

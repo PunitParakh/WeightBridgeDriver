@@ -14,7 +14,6 @@ import androidx.core.app.NotificationCompat
 import com.hoho.android.usbserial.driver.UsbSerialPort
 import com.punit.weightdriver.R
 import kotlinx.coroutines.*
-import java.nio.charset.Charset
 
 class UsbReaderService : Service() {
 
@@ -51,19 +50,46 @@ class UsbReaderService : Service() {
         }
     }
 
+    // Listen for profile updates coming from DeviceEditDialog (or anywhere else)
+    private val profileUpdatedReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action != ACTION_PROFILE_UPDATED) return
+            // Extras are optional; you can expand this later to match current device and reconfigure
+            val vid = intent.getIntExtra("vid", -1)
+            val pid = intent.getIntExtra("pid", -1)
+            val serialNo = intent.getStringExtra("serial")
+            // For now, just update the notification so you know it arrived.
+            updateNotif("Profile updated (vid=$vid pid=$pid serial=$serialNo)")
+            // TODO: if currently connected and this profile matches, re-open port with new params.
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
         serial = UsbSerialManager(this)
 
         // mark service running in prefs (so UI can reflect)
-        getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit().putBoolean(KEY_SERVICE_RUNNING, true).apply()
+        getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_SERVICE_RUNNING, true).apply()
 
         registerReceiver(detachReceiver, IntentFilter(UsbManager.ACTION_USB_DEVICE_DETACHED))
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(permReceiver, IntentFilter(ACTION_USB_PERMISSION), Context.RECEIVER_NOT_EXPORTED)
+            registerReceiver(
+                permReceiver,
+                IntentFilter(ACTION_USB_PERMISSION),
+                Context.RECEIVER_NOT_EXPORTED
+            )
+            registerReceiver(
+                profileUpdatedReceiver,
+                IntentFilter(ACTION_PROFILE_UPDATED),
+                Context.RECEIVER_NOT_EXPORTED
+            )
         } else {
             @Suppress("DEPRECATION")
             registerReceiver(permReceiver, IntentFilter(ACTION_USB_PERMISSION))
+            @Suppress("DEPRECATION")
+            registerReceiver(profileUpdatedReceiver, IntentFilter(ACTION_PROFILE_UPDATED))
         }
 
         createChannel()
@@ -73,12 +99,11 @@ class UsbReaderService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // Support ADB/intent testing: if extra.weight passed via start, broadcast it (so receiver handles DB+clipboard)
+        // Support in-app/adb testing: if EXTRA_WEIGHT passed to service, broadcast it
         intent?.getStringExtra(EXTRA_WEIGHT)?.let { w ->
-            // broadcast on the main thread (receiver will handle DB/copy)
             val b = Intent(ACTION_WEIGHT)
                 .putExtra(EXTRA_WEIGHT, w)
-                .setPackage(packageName) // ensure it targets receivers in this app
+                .setPackage(packageName)
             sendBroadcast(b)
             updateNotif("Last: $w")
         }
@@ -127,16 +152,16 @@ class UsbReaderService : Service() {
                         val s = String(buf, 0, n, Charsets.UTF_8)
                         sb.append(s)
                         val parts = sb.toString().split(Regex("[\r\n]+"))
-                        val lastFrag = if (sb.endsWith("\n") || sb.endsWith("\r")) "" else parts.lastOrNull() ?: ""
+                        val lastFrag =
+                            if (sb.endsWith("\n") || sb.endsWith("\r")) "" else parts.lastOrNull() ?: ""
                         val complete = if (lastFrag.isEmpty()) parts else parts.dropLast(1)
 
                         for (line in complete) {
                             val weight = line.trim()
                             if (weight.isNotEmpty()) {
-                                // Broadcast the weight — receiver(s) will take care of DB/copy/inject
                                 val b = Intent(ACTION_WEIGHT)
                                     .putExtra(EXTRA_WEIGHT, weight)
-                                    .setPackage(packageName) // ensure it targets receivers in this app
+                                    .setPackage(packageName)
                                 sendBroadcast(b)
                                 updateNotif("Last: $weight")
                             }
@@ -160,7 +185,11 @@ class UsbReaderService : Service() {
     private fun createChannel() {
         if (Build.VERSION.SDK_INT >= 26) {
             val nm = getSystemService(NotificationManager::class.java)
-            val ch = NotificationChannel(CHANNEL_ID, "Weight Driver", NotificationManager.IMPORTANCE_LOW)
+            val ch = NotificationChannel(
+                CHANNEL_ID,
+                "Weight Driver",
+                NotificationManager.IMPORTANCE_LOW
+            )
             nm.createNotificationChannel(ch)
         }
     }
@@ -184,9 +213,10 @@ class UsbReaderService : Service() {
         serviceScope.cancel()
         try { unregisterReceiver(detachReceiver) } catch (_: Exception) {}
         try { unregisterReceiver(permReceiver) } catch (_: Exception) {}
+        try { unregisterReceiver(profileUpdatedReceiver) } catch (_: Exception) {}
 
-        // clear service_running flag
-        getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit().putBoolean(KEY_SERVICE_RUNNING, false).apply()
+        getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_SERVICE_RUNNING, false).apply()
 
         super.onDestroy()
     }
@@ -200,5 +230,8 @@ class UsbReaderService : Service() {
         const val ACTION_USB_PERMISSION = "com.punit.weightdriver.USB_PERMISSION"
         const val ACTION_WEIGHT = "com.punit.weightdriver.WEIGHT"
         const val EXTRA_WEIGHT = "extra.weight"
+
+        // ✅ Add this so DeviceEditDialog can reference it
+        const val ACTION_PROFILE_UPDATED = "com.punit.weightdriver.PROFILE_UPDATED"
     }
 }

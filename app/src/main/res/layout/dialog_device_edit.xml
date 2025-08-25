@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:padding="16dp"
+        android:layout_width="match_parent" android:layout_height="wrap_content">
+
+
+
+        <EditText
+            android:id="@+id/edtName"
+            android:hint="Display name (optional)"
+            android:layout_width="match_parent" android:layout_height="wrap_content"/>
+
+        <Spinner android:id="@+id/spBaud"
+            android:layout_width="match_parent" android:layout_height="wrap_content"/>
+        <Spinner android:id="@+id/spDataBits"
+            android:layout_width="match_parent" android:layout_height="wrap_content"/>
+        <Spinner android:id="@+id/spStopBits"
+            android:layout_width="match_parent" android:layout_height="wrap_content"/>
+        <Spinner android:id="@+id/spParity"
+            android:layout_width="match_parent" android:layout_height="wrap_content"/>
+
+        <EditText
+            android:id="@+id/edtTerminator"
+            android:hint="Line terminator (regex)"
+            android:text="\\r?\\n"
+            android:layout_width="match_parent" android:layout_height="wrap_content"/>
+
+        <EditText
+            android:id="@+id/edtRegex"
+            android:hint="Weight regex (group 1)"
+            android:text="([0-9]+(?:\\.[0-9]+)?)"
+            android:layout_width="match_parent" android:layout_height="wrap_content"/>
+
+        <EditText
+            android:id="@+id/edtPortIndex"
+            android:hint="Port index"
+            android:text="0"
+            android:inputType="number"
+            android:layout_width="match_parent" android:layout_height="wrap_content"/>
+
+        <TextView
+            android:id="@+id/txtSerial"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Serial: Unknown"
+            android:textStyle="bold"
+            android:padding="8dp"/>
+
+    </LinearLayout>
+</ScrollView>

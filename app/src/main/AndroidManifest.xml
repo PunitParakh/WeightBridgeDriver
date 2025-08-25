@@ -1,21 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     package="com.punit.weightdriver">
 
-    <!-- USB host capability -->
+    <!-- Must be outside <application> -->
     <uses-feature android:name="android.hardware.usb.host" android:required="false" />
 
-    <!-- Foreground service general + connected device type (Android 14+) -->
+
+    <uses-permission android:name="android.permission.USB_PERMISSION" tools:ignore="MissingPermission"/>
+
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
-
-    <!-- Notifications are required for foreground service on Android 13+ -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-
-    <!-- Auto start on boot (for POS devices / kiosks) -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
+        android:name=".App"
         android:allowBackup="true"
         android:label="@string/app_name"
         android:supportsRtl="true"
@@ -32,13 +32,12 @@
             </intent-filter>
         </activity>
 
-        <!-- Foreground USB reader service -->
+
         <service
             android:name=".core.UsbReaderService"
             android:exported="false"
             android:foregroundServiceType="connectedDevice" />
 
-        <!-- Accessibility for auto-insert -->
         <service
             android:name=".inject.MyAccessibilityService"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
@@ -51,21 +50,23 @@
                 android:resource="@xml/accessibility_service_config" />
         </service>
 
-        <!-- Start when USB device is attached (even on POS) -->
+        <!-- ✅ Single, correct receiver -->
         <receiver
             android:name=".receivers.UsbAttachReceiver"
             android:enabled="true"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
+                <action android:name="android.hardware.usb.action.USB_DEVICE_DETACHED" />
             </intent-filter>
-            <!-- Broad filters: CDC-ACM class (0x02) and vendor-specific (0xff) -->
+            <!-- Optional filter file; remove this <meta-data> if you don't have /xml/device_filter.xml -->
+            <!--
             <meta-data
                 android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
                 android:resource="@xml/device_filter" />
+            -->
         </receiver>
 
-        <!-- Receives weight broadcasts (DB insert + clipboard copy). Exported=true to allow adb testing. -->
         <receiver
             android:name=".core.WeightReceiver"
             android:exported="true">
@@ -74,7 +75,6 @@
             </intent-filter>
         </receiver>
 
-        <!-- Restart after reboot -->
         <receiver
             android:name=".receivers.BootReceiver"
             android:enabled="true"

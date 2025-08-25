@@ -9,14 +9,19 @@ import com.punit.weightdriver.core.UsbReaderService
 
 class UsbAttachReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        if (UsbManager.ACTION_USB_DEVICE_ATTACHED == intent.action) {
-            // Start (or keep) the foreground service to handle the device immediately
-            val serviceIntent = Intent(context, UsbReaderService::class.java)
+        val action = intent.action ?: return
+        if (action == UsbManager.ACTION_USB_DEVICE_ATTACHED) {
+            // Start the foreground service to handle the device.
+            val svc = Intent(context, UsbReaderService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(serviceIntent)
+                context.startForegroundService(svc)
             } else {
-                context.startService(serviceIntent)
+                context.startService(svc)
             }
         }
+        // (Optional) you can stop the service on DETACHED if desired:
+        // if (action == UsbManager.ACTION_USB_DEVICE_DETACHED) {
+        //     context.stopService(Intent(context, UsbReaderService::class.java))
+        // }
     }
 }
